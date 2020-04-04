@@ -10,6 +10,4 @@ func main() {
 	if err := WriteCurrentTime(os.Stdout); err != nil {
 		log.Fatalln(err)
 	}
-
-	os.Exit(0)
 }

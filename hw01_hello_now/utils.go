@@ -8,44 +8,21 @@ import (
 	"github.com/beevik/ntp"
 )
 
-type timeGetter = func() (time.Time, error)
-
 func WriteCurrentTime(w io.Writer) error {
-	var formattedTime string
+	currentTime := time.Now()
 
-	currentTime, err := getTime(getCurrentTime)
+	exactTime, err := getExactTime()
 	if err != nil {
 		return err
 	}
-	formattedTime += formatTime(currentTime, "current time: %s")
 
-	exactTime, err := getTime(getExactTime)
-	if err != nil {
-		return err
-	}
-	formattedTime += formatTime(exactTime, "\nexact time: %s")
-
-	_, err = w.Write([]byte(formattedTime))
+	_, err = w.Write([]byte(fmt.Sprintf(
+		"current time: %s\nexact time: %s\n",
+		currentTime.Round(0).String(),
+		exactTime.Round(0).String(),
+	)))
 
 	return err
-}
-
-func formatTime(t time.Time, layout string) string {
-	return fmt.Sprintf(layout, t.Round(0).String())
-}
-
-func getTime(adapter timeGetter) (time.Time, error) {
-	receivedTime, err := adapter()
-
-	if err != nil {
-		return time.Time{}, fmt.Errorf("cannot get time. Reason: %s", err.Error())
-	}
-
-	return receivedTime, nil
-}
-
-func getCurrentTime() (time.Time, error) {
-	return time.Now(), nil
 }
 
 func getExactTime() (time.Time, error) {
