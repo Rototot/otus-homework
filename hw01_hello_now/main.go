@@ -1,5 +1,13 @@
 package main
 
+import (
+	"log"
+	"os"
+)
+
 func main() {
-	// Place your code here
+	// run
+	if err := WriteCurrentTime(os.Stdout); err != nil {
+		log.Fatalln(err)
+	}
 }
