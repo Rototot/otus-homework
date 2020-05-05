@@ -6,17 +6,10 @@ import (
 )
 
 func Top10(rawData string) []string {
-	// prepare
-	preparedData := strings.Split(prepareString(rawData), " ")
-	repeatableWords := make(map[string]int, len(preparedData))
 
-	for _, word := range preparedData {
-		repeatableWords[word]++
-	}
+	var repeatableWords = extractMapRepeatableWords(rawData)
 
-	t := extractListTopWords(repeatableWords, 10)
-
-	return t
+	return extractTopWords(repeatableWords, 10)
 }
 
 // prepare
@@ -26,12 +19,34 @@ func prepareString(rawData string) string {
 	replacer := regexp.MustCompile("[\n|\t|\r]+")
 	spaceReplacer := regexp.MustCompile(`[\s]{2,}`)
 	preparedString := spaceReplacer.ReplaceAllString(replacer.ReplaceAllString(rawData, " "), " ")
+	preparedString = strings.Trim(preparedString, "\n\r\t ")
 
 	return preparedString
 }
 
-func extractListTopWords(repeatableWords map[string]int, topSize int) []string {
-	var mapPositions = make(map[int][]string, topSize)
+func extractMapRepeatableWords(rawData string) map[string]int {
+	// prepare
+	var preparedString = prepareString(rawData)
+	var words = strings.Split(preparedString, " ")
+	var capWords = 0
+
+	if len(words) > 1 {
+		capWords = len(words)
+	}
+
+	repeatableWords := make(map[string]int, capWords)
+	for _, word := range words {
+		cleanedWord := strings.TrimSpace(word)
+		if cleanedWord != "" {
+			repeatableWords[cleanedWord]++
+		}
+	}
+
+	return repeatableWords
+}
+
+func extractTopWords(repeatableWords map[string]int, topSize int) []string {
+	var mapPositions = make(map[int][]string)
 
 	for word, repeats := range repeatableWords {
 		_, ok := mapPositions[repeats]
@@ -42,13 +57,12 @@ func extractListTopWords(repeatableWords map[string]int, topSize int) []string {
 		}
 	}
 
-	var topPositions = extractTopPositions(mapPositions, topSize)
-	var topWords = extractTopWords(mapPositions, topPositions, topSize)
+	topPositions := extractPositions(mapPositions, topSize)
 
-	return topWords
+	return extractWords(mapPositions, topPositions, topSize)
 }
 
-func extractTopPositions(mapPositions map[int][]string, topSize int) []int {
+func extractPositions(mapPositions map[int][]string, topSize int) []int {
 	var wordsPositions sort.IntSlice = make([]int, len(mapPositions))
 	i := 0
 	for position := range mapPositions {
@@ -62,10 +76,10 @@ func extractTopPositions(mapPositions map[int][]string, topSize int) []int {
 		size = len(wordsPositions)
 	}
 
-	return wordsPositions[:size-1]
+	return wordsPositions[:size]
 }
 
-func extractTopWords(mapPositions map[int][]string, topPositions []int, topSize int) []string {
+func extractWords(mapPositions map[int][]string, topPositions []int, topSize int) []string {
 
 	var listWords = make([]string, 0)
 	var i = 0
