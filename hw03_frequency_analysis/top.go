@@ -6,35 +6,42 @@ import (
 )
 
 func Top10(rawData string) []string {
-
-	var repeatableWords = extractMapRepeatableWords(rawData)
+	var repeatableWords = extractRepeatableWords(rawData)
 
 	return extractTopWords(repeatableWords, 10)
 }
 
-// prepare
-// clear \n\r\t -> \s
-// \s{2,} -> \s
 func prepareString(rawData string) string {
-	replacer := regexp.MustCompile("[\n|\t|\r]+")
-	spaceReplacer := regexp.MustCompile(`[\s]{2,}`)
-	preparedString := spaceReplacer.ReplaceAllString(replacer.ReplaceAllString(rawData, " "), " ")
-	preparedString = strings.Trim(preparedString, "\n\r\t ")
+	var preparers = []func(value string) string{
+		func(value string) string {
+			return regexp.MustCompile("[\n|\t|\r]+").ReplaceAllString(value, " ")
+		},
+		//// punctuation
+		//func(value string) string {
+		//	//\p{P}
+		//	return regexp.MustCompile(`([\p{Pc}\p{Pe}\p{Pf}\p{Pi}\p{Po}])`).ReplaceAllString(value, " ")
+		//},
+		func(value string) string {
+			return regexp.MustCompile(`\s{2,}`).ReplaceAllString(value, " ")
+		},
+		strings.TrimSpace,
+		//strings.ToLower,
+	}
+
+	var preparedString = rawData
+	for _, strategy := range preparers {
+		preparedString = strategy(preparedString)
+	}
 
 	return preparedString
 }
 
-func extractMapRepeatableWords(rawData string) map[string]int {
+func extractRepeatableWords(rawData string) map[string]int {
 	// prepare
 	var preparedString = prepareString(rawData)
 	var words = strings.Split(preparedString, " ")
-	var capWords = 0
 
-	if len(words) > 1 {
-		capWords = len(words)
-	}
-
-	repeatableWords := make(map[string]int, capWords)
+	repeatableWords := make(map[string]int, len(words))
 	for _, word := range words {
 		cleanedWord := strings.TrimSpace(word)
 		if cleanedWord != "" {
@@ -48,6 +55,7 @@ func extractMapRepeatableWords(rawData string) map[string]int {
 func extractTopWords(repeatableWords map[string]int, topSize int) []string {
 	var mapPositions = make(map[int][]string)
 
+	// разворачиваем и получаем позиции и слова на них
 	for word, repeats := range repeatableWords {
 		_, ok := mapPositions[repeats]
 		if !ok {
@@ -57,8 +65,10 @@ func extractTopWords(repeatableWords map[string]int, topSize int) []string {
 		}
 	}
 
+	// получаем срез топ позиций
 	topPositions := extractPositions(mapPositions, topSize)
 
+	// получаем топ слова на топ позициях
 	return extractWords(mapPositions, topPositions, topSize)
 }
 
@@ -80,7 +90,6 @@ func extractPositions(mapPositions map[int][]string, topSize int) []int {
 }
 
 func extractWords(mapPositions map[int][]string, topPositions []int, topSize int) []string {
-
 	var listWords = make([]string, 0)
 	var i = 0
 	for _, position := range topPositions {

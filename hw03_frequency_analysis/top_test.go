@@ -72,17 +72,11 @@ func TestTop10(t *testing.T) {
 
 	t.Run("when only special chars in text", func(t *testing.T) {
 		if taskWithAsteriskIsCompleted {
-			text := `
-	
-   
- 
-			`
+			text := "\n \t \n \r"
 			var expected []string
 			assert.Subset(t, expected, Top10(text))
 		} else {
-			text := `
-	
-			`
+			text := "\n \t \n \r"
 			var expected []string
 			assert.ElementsMatch(t, expected, Top10(text))
 		}
