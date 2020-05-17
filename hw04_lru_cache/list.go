@@ -81,6 +81,7 @@ func (l *list) Remove(item *listItem) {
 	// is a head
 	if item == l.head {
 		l.head = l.head.Prev
+		l.head.Next = nil
 		l.length--
 		return
 	}
@@ -88,6 +89,7 @@ func (l *list) Remove(item *listItem) {
 	// is a tail
 	if item == l.tail {
 		l.tail = l.tail.Next
+		l.tail.Prev = nil
 		l.length--
 		return
 	}

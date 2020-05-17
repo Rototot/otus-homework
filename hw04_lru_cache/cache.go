@@ -12,12 +12,13 @@ type Cache interface {
 type lruCache struct {
 	capacity int
 	queue    List
-	items    map[Key]*cacheItem
+	items    map[Key]*listItem
 	mu       sync.Mutex
 }
 
 type cacheItem struct {
-	queueItem *listItem
+	key   Key
+	value interface{}
 }
 
 func NewCache(capacity int) Cache {
@@ -34,17 +35,21 @@ func (c *lruCache) Set(key Key, value interface{}) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	val, ok := c.items[key]
+	item, ok := c.items[key]
 	if ok {
-		val.queueItem.Value = value
-		c.queue.MoveToFront(val.queueItem)
+		item.Value = &cacheItem{key: key, value: value}
+		c.queue.MoveToFront(item)
 	} else {
 		// delete last queue item
-		if c.queue.Len() >= c.capacity {
-			c.queue.Remove(c.queue.Back())
+		if c.capacity > 0 && c.queue.Len() >= c.capacity {
+			tail := c.queue.Back()
+			tailValue := c.extractCacheItem(tail)
+
+			c.queue.Remove(tail)
+			delete(c.items, tailValue.key)
 		}
 
-		c.items[key] = &cacheItem{queueItem: c.queue.PushFront(value)}
+		c.items[key] = c.queue.PushFront(&cacheItem{key: key, value: value})
 	}
 
 	return ok
@@ -60,9 +65,9 @@ func (c *lruCache) Get(key Key) (interface{}, bool) {
 		return nil, false
 	}
 
-	c.queue.MoveToFront(item.queueItem)
+	c.queue.MoveToFront(item)
 
-	return item.queueItem.Value, true
+	return c.extractCacheItem(item).value, true
 }
 
 func (c *lruCache) Clear() {
@@ -73,6 +78,15 @@ func (c *lruCache) Clear() {
 }
 
 func (c *lruCache) init() {
-	c.items = make(map[Key]*cacheItem, c.capacity)
+	c.items = make(map[Key]*listItem, c.capacity)
 	c.queue = NewList()
+}
+
+func (c *lruCache) extractCacheItem(v *listItem) *cacheItem {
+	value, ok := v.Value.(*cacheItem)
+	if !ok {
+		panic("unexpected value in cache")
+	}
+
+	return value
 }
