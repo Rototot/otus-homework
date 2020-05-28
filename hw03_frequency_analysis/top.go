@@ -100,9 +100,9 @@ func extractWords(mapPositions map[int][]string, topPositions []int, topSize int
 			for _, word := range words {
 				if i >= topSize {
 					return listWords
-				} else {
-					listWords = append(listWords, word)
 				}
+
+				listWords = append(listWords, word)
 				i++
 			}
 		}
