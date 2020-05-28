@@ -6,7 +6,6 @@ import (
 )
 
 var ErrErrorsLimitExceeded = errors.New("errors limit exceeded")
-var ErrNoTasks = errors.New("errors no tasks")
 var ErrInvalidArgument = errors.New("invalid argument")
 
 type Task func() error
@@ -16,11 +15,10 @@ type workerResults struct {
 	task  Task
 }
 
-// Run starts tasks in N goroutines and stops its work when receiving M errors from tasks
-func Run(tasks []Task, N int, M int) error {
+func Run(tasks []Task, poolSize int, maxErrors int) error {
 	var exitError error
 
-	if N < 0 || M < 0 {
+	if poolSize < 0 || maxErrors < 0 {
 		return ErrInvalidArgument
 	}
 
@@ -38,7 +36,7 @@ func Run(tasks []Task, N int, M int) error {
 	var doneWorkers = make(chan bool)
 	var workersResults = make(chan *workerResults, len(tasks))
 	// run workers
-	for i := 0; i < N; i++ {
+	for i := 0; i < poolSize; i++ {
 		wgWorkers.Add(1)
 		go func() {
 			defer wgWorkers.Done()
@@ -50,7 +48,7 @@ func Run(tasks []Task, N int, M int) error {
 	var qtyErrors int
 	var qtyNoErrorTasks int
 	var attempts int
-	var maxAttempts = N + M
+	var maxAttempts = poolSize + maxErrors
 	for result := range workersResults {
 		attempts++
 		// complete all tasks
@@ -64,7 +62,7 @@ func Run(tasks []Task, N int, M int) error {
 
 		if qtyNoErrorTasks >= len(tasks) {
 			break
-			// if errors then all attempts = N + M
+			// if errors then all attempts = poolSize + maxErrors
 		} else if qtyErrors > 0 && attempts >= maxAttempts {
 			exitError = ErrErrorsLimitExceeded
 			break
@@ -72,7 +70,6 @@ func Run(tasks []Task, N int, M int) error {
 	}
 
 	close(doneWorkers)
-
 	wgWorkers.Wait()
 
 	close(queue)
@@ -82,7 +79,6 @@ func Run(tasks []Task, N int, M int) error {
 }
 
 func worker(queue <-chan Task, result chan<- *workerResults, done <-chan bool) {
-
 	handler := func(task Task) {
 		result <- &workerResults{error: task(), task: task}
 	}
