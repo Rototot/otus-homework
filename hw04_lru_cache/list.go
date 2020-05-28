@@ -114,7 +114,6 @@ func (l *list) MoveToFront(item *listItem) {
 }
 
 func (l *list) initRange(item *listItem) bool {
-
 	if l.length == 0 {
 		l.head = item
 		l.tail = item

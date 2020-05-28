@@ -22,7 +22,6 @@ type cacheItem struct {
 }
 
 func NewCache(capacity int) Cache {
-
 	cache := &lruCache{
 		capacity: capacity,
 	}
