@@ -34,7 +34,7 @@ func Run(tasks []Task, poolSize int, maxErrors int) error {
 	return err
 }
 
-type workersPool struct {
+type WorkersPool struct {
 	queue           chan Task
 	size            int
 	maxErrors       int
@@ -46,8 +46,8 @@ type workersPool struct {
 	su              sync.Mutex
 }
 
-func NewWorkerPool(queue chan Task, poolSize int, maxErrors int, maxAttempts int) *workersPool {
-	return &workersPool{
+func NewWorkerPool(queue chan Task, poolSize int, maxErrors int, maxAttempts int) *WorkersPool {
+	return &WorkersPool{
 		queue:           queue,
 		size:            poolSize,
 		maxErrors:       maxErrors,
@@ -56,7 +56,7 @@ func NewWorkerPool(queue chan Task, poolSize int, maxErrors int, maxAttempts int
 	}
 }
 
-func (p *workersPool) Listen() error {
+func (p *WorkersPool) Listen() error {
 	// await complete workers
 	p.startWorkers()
 
@@ -67,7 +67,7 @@ func (p *workersPool) Listen() error {
 	return nil
 }
 
-func (p *workersPool) startWorkers() {
+func (p *WorkersPool) startWorkers() {
 	var wg sync.WaitGroup
 	for i := 0; i < p.size; i++ {
 		wg.Add(1)
@@ -80,7 +80,7 @@ func (p *workersPool) startWorkers() {
 	wg.Wait()
 }
 
-func (p *workersPool) worker() {
+func (p *WorkersPool) worker() {
 	var isNeedStop = func() bool {
 		p.su.Lock()
 		defer p.su.Unlock()
@@ -107,7 +107,7 @@ func (p *workersPool) worker() {
 	}
 }
 
-func (p *workersPool) handleTask(task Task) {
+func (p *WorkersPool) handleTask(task Task) {
 	err := task()
 	p.su.Lock()
 	defer p.su.Unlock()
