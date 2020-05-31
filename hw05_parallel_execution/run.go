@@ -10,14 +10,7 @@ var ErrInvalidArgument = errors.New("invalid argument")
 
 type Task func() error
 
-type workerResults struct {
-	error error
-	task  Task
-}
-
 func Run(tasks []Task, poolSize int, maxErrors int) error {
-	var exitError error
-
 	if poolSize < 0 || maxErrors < 0 {
 		return ErrInvalidArgument
 	}
@@ -32,65 +25,97 @@ func Run(tasks []Task, poolSize int, maxErrors int) error {
 		queue <- task
 	}
 
-	var wgWorkers sync.WaitGroup
-	var doneWorkers = make(chan bool)
-	var workersResults = make(chan *workerResults, len(tasks))
-	// run workers
-	for i := 0; i < poolSize; i++ {
-		wgWorkers.Add(1)
+	// run pool workers
+	var pool = NewWorkerPool(queue, poolSize, maxErrors, poolSize+maxErrors)
+	err := pool.Listen()
+
+	close(queue)
+
+	return err
+}
+
+type workersPool struct {
+	queue           chan Task
+	size            int
+	maxErrors       int
+	maxAttempts     int
+	maxNoErrorTasks int
+	qtyErrors       int
+	qtyAttempts     int
+	qtyNoErrorTasks int
+	su              sync.Mutex
+}
+
+func NewWorkerPool(queue chan Task, poolSize int, maxErrors int, maxAttempts int) *workersPool {
+	return &workersPool{
+		queue:           queue,
+		size:            poolSize,
+		maxErrors:       maxErrors,
+		maxAttempts:     maxAttempts,
+		maxNoErrorTasks: cap(queue),
+	}
+}
+
+func (p *workersPool) Listen() error {
+	// await complete workers
+	p.startWorkers()
+
+	if p.qtyErrors > p.maxErrors {
+		return ErrErrorsLimitExceeded
+	}
+
+	return nil
+}
+
+func (p *workersPool) startWorkers() {
+	var wg sync.WaitGroup
+	for i := 0; i < p.size; i++ {
+		wg.Add(1)
 		go func() {
-			defer wgWorkers.Done()
-			worker(queue, workersResults, doneWorkers)
+			defer wg.Done()
+			p.worker()
 		}()
 	}
 
-	// handle workers results
-	var qtyErrors int
-	var qtyNoErrorTasks int
-	var attempts int
-	var maxAttempts = poolSize + maxErrors
-	for result := range workersResults {
-		attempts++
-		// complete all tasks
-		if result.error != nil {
-			qtyErrors++
-			// return to queue if error
-			queue <- result.task
-		} else {
-			qtyNoErrorTasks++
-		}
-
-		if qtyNoErrorTasks >= len(tasks) {
-			break
-			// if errors then all attempts = poolSize + maxErrors
-		} else if qtyErrors > 0 && attempts >= maxAttempts {
-			exitError = ErrErrorsLimitExceeded
-			break
-		}
-	}
-
-	close(doneWorkers)
-	wgWorkers.Wait()
-
-	close(queue)
-	close(workersResults)
-
-	return exitError
+	wg.Wait()
 }
 
-func worker(queue <-chan Task, result chan<- *workerResults, done <-chan bool) {
-	handler := func(task Task) {
-		result <- &workerResults{error: task(), task: task}
-	}
+func (p *workersPool) worker() {
+	var isNeedStop = func() bool {
+		p.su.Lock()
+		defer p.su.Unlock()
 
+		// errors > M
+		// with erros -> >= N+M
+		// complete = N
+		return p.qtyErrors > p.maxErrors ||
+			(p.qtyErrors > 0 && p.qtyAttempts >= p.maxAttempts) ||
+			p.qtyNoErrorTasks >= p.maxNoErrorTasks
+	}
 	for {
 		select {
-		case task, ok := <-queue:
-			if ok {
-				handler(task)
+		case task, ok := <-p.queue:
+			if !ok || isNeedStop() {
+				return
 			}
-		case <-done:
-			return
+			p.handleTask(task)
+		default:
+			if isNeedStop() {
+				return
+			}
 		}
+	}
+}
+
+func (p *workersPool) handleTask(task Task) {
+	err := task()
+	p.su.Lock()
+	defer p.su.Unlock()
+
+	p.qtyAttempts++
+	if err == nil {
+		p.qtyNoErrorTasks++
+	} else {
+		p.qtyErrors++
 	}
 }
