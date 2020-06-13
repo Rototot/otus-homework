@@ -12,7 +12,6 @@ import (
 
 var (
 	ErrEmptyPath             = errors.New("empty file path")
-	//ErrUnsupportedFile       = errors.New("unsupported file")
 	ErrOffsetExceedsFileSize = errors.New("offset exceeds file size")
 	ErrInvalidArgument       = os.ErrInvalid
 )
@@ -42,6 +41,7 @@ func Copy(fromPath string, toPath string, offset, limit int64) error {
 	}
 
 	// open
+	var sourceFile *os.File
 	sourceFile, err := os.Open(fromPath)
 	if err != nil {
 		return err
@@ -93,16 +93,29 @@ func copying(sourceFile *os.File, args copyArgs) error {
 	}
 
 	// calc max qty bytes for transfer
+	var transferChunkSize int64 = 10 // 10 byte
 	var transferLimit = sourceFileInfo.Size()
-	if limit > 0 && limit < sourceFileInfo.Size() {
-		transferLimit = limit
+	if args.limit > 0 && args.limit < sourceFileInfo.Size() {
+		transferLimit = args.limit
 	}
 
+	// bar init
+	var refreshRate = 5 * time.Millisecond
+	var bar = pb.Full.Start64(transferLimit)
+	bar.Set(pb.Bytes, true)
+	bar.Set(pb.Color, true)
+	bar.SetRefreshRate(refreshRate)
+
+	// copy
 	var readBytes int64 = 0
-	var bufSize int64 = 8
-	bar := pb.Start64(transferLimit)
-	for readBytes <= transferLimit {
-		qty, err := io.CopyN(tempDstFile, sourceFile, bufSize)
+	var chunkSize = transferChunkSize
+	for readBytes < transferLimit {
+		remainingBytes := transferLimit - readBytes
+		if remainingBytes < chunkSize {
+			chunkSize = remainingBytes
+		}
+
+		qty, err := io.CopyN(tempDstFile, sourceFile, chunkSize)
 
 		readBytes += qty
 		bar.Add64(qty)
@@ -112,10 +125,9 @@ func copying(sourceFile *os.File, args copyArgs) error {
 		} else if err != nil {
 			panic(err)
 		}
-
-		time.Sleep(time.Millisecond)
+		time.Sleep(refreshRate)
 	}
-	//bar.Finish()
+	bar.Finish()
 
 	if err := tempDstFile.Close(); err != nil {
 		return err
@@ -130,7 +142,6 @@ func copying(sourceFile *os.File, args copyArgs) error {
 }
 
 func validateArgs(args copyArgs) error {
-
 
 	validators := []validator{
 		func() error { return isNotEmptyPath(args.fromPath) },

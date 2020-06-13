@@ -19,8 +19,8 @@ func TestCopy(t *testing.T) {
 		var args = *&args{
 			fromPath: "testdata/input.txt",
 			toPath:   "out.txt",
-			offset:   int64(0),
-			limit:    int64(0),
+			offset:   0,
+			limit:    0,
 		}
 		expectFile, err := os.Open(args.fromPath)
 		assert.NoError(t, err)
@@ -40,7 +40,105 @@ func TestCopy(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, expectedFileInfo.Size(), actualFileInfo.Size())
+
+		if err := os.Remove(args.toPath); err != nil {
+			t.Fatal(err)
+		}
 	})
+
+	t.Run("when set limit", func(t *testing.T) {
+		var args = *&args{
+			fromPath: "testdata/input.txt",
+			toPath:   "out_limit_10.txt",
+			offset:   0,
+			limit:    10,
+		}
+		expectFile, err := os.Open("testdata/out_offset0_limit10.txt")
+		assert.NoError(t, err)
+		defer expectFile.Close()
+
+		expectedFileInfo, err := expectFile.Stat()
+		assert.NoError(t, err)
+
+		result := Copy(args.fromPath, args.toPath, args.offset, args.limit)
+		assert.NoError(t, result)
+		assert.FileExists(t, args.toPath)
+
+		actualFile, err := os.Open(args.toPath)
+		assert.NoError(t, err)
+
+		actualFileInfo, err := actualFile.Stat()
+		assert.NoError(t, err)
+
+		assert.Equal(t, expectedFileInfo.Size(), actualFileInfo.Size())
+
+		if err := os.Remove(args.toPath); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("when set limit and offset", func(t *testing.T) {
+		var args = *&args{
+			fromPath: "testdata/input.txt",
+			toPath:   "out_limit_10.txt",
+			offset:   100,
+			limit:    1000,
+		}
+		expectFile, err := os.Open("testdata/out_offset100_limit1000.txt")
+		assert.NoError(t, err)
+		defer expectFile.Close()
+
+		expectedFileInfo, err := expectFile.Stat()
+		assert.NoError(t, err)
+
+		result := Copy(args.fromPath, args.toPath, args.offset, args.limit)
+		assert.NoError(t, result)
+		assert.FileExists(t, args.toPath)
+
+		actualFile, err := os.Open(args.toPath)
+		assert.NoError(t, err)
+
+		actualFileInfo, err := actualFile.Stat()
+		assert.NoError(t, err)
+
+		assert.Equal(t, expectedFileInfo.Size(), actualFileInfo.Size())
+
+		if err := os.Remove(args.toPath); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("when copy empty file", func(t *testing.T) {
+		var args = *&args{
+			fromPath: "testdata/input_empty.txt",
+			toPath:   "out_limit_10.txt",
+			offset:   0,
+			limit:    1000,
+		}
+		expectFile, err := os.Open("testdata/out_empty.txt")
+		assert.NoError(t, err)
+		defer expectFile.Close()
+
+		expectedFileInfo, err := expectFile.Stat()
+		assert.NoError(t, err)
+
+		result := Copy(args.fromPath, args.toPath, args.offset, args.limit)
+		assert.NoError(t, result)
+		assert.FileExists(t, args.toPath)
+
+		actualFile, err := os.Open(args.toPath)
+		assert.NoError(t, err)
+
+		actualFileInfo, err := actualFile.Stat()
+		assert.NoError(t, err)
+
+		assert.Equal(t, expectedFileInfo.Size(), actualFileInfo.Size())
+
+		if err := os.Remove(args.toPath); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 
 	validateCases := []struct {
 		name    string
@@ -51,8 +149,8 @@ func TestCopy(t *testing.T) {
 			name: "limit < 0", args: args{
 			fromPath: "testdata/input.txt",
 			toPath:   "out.txt",
-			offset:   int64(-2),
-			limit:    int64(0),
+			offset:   -2,
+			limit:    0,
 		},
 			wantErr: ErrInvalidArgument,
 		},
@@ -60,8 +158,8 @@ func TestCopy(t *testing.T) {
 			name: "offset < 0", args: args{
 			fromPath: "testdata/input.txt",
 			toPath:   "out.txt",
-			offset:   int64(0),
-			limit:    int64(-1),
+			offset:   0,
+			limit:    -1,
 		},
 			wantErr: ErrInvalidArgument,
 		},
@@ -69,8 +167,8 @@ func TestCopy(t *testing.T) {
 			name: "empty source path", args: args{
 			fromPath: "",
 			toPath:   "out.txt",
-			offset:   int64(0),
-			limit:    int64(0),
+			offset:   0,
+			limit:    0,
 		},
 			wantErr: ErrEmptyPath,
 		},
@@ -78,8 +176,8 @@ func TestCopy(t *testing.T) {
 			name: "empty dst path", args: args{
 			fromPath: "testdata/input.txt",
 			toPath:   "",
-			offset:   int64(0),
-			limit:    int64(0),
+			offset:   0,
+			limit:    0,
 		},
 			wantErr: ErrEmptyPath,
 		},
@@ -87,8 +185,8 @@ func TestCopy(t *testing.T) {
 			name: "offset more than source size", args: args{
 			fromPath: "testdata/input.txt",
 			toPath:   "out.txt",
-			offset:   int64(1024 * 1024),
-			limit:    int64(0),
+			offset:   1024 * 1024,
+			limit:    0,
 		},
 			wantErr: ErrOffsetExceedsFileSize,
 		},
@@ -96,8 +194,8 @@ func TestCopy(t *testing.T) {
 			name: "source path is directory", args: args{
 			fromPath: "testdata",
 			toPath:   "out.txt",
-			offset:   int64(0),
-			limit:    int64(0),
+			offset:   0,
+			limit:    0,
 		},
 			wantErr: errors.New("testdata is not a file"),
 		},
@@ -108,16 +206,6 @@ func TestCopy(t *testing.T) {
 			assert.Error(t, err)
 			assert.EqualError(t, err, tt.wantErr.Error())
 		})
-	}
-
-}
-
-func TestCopy1(t *testing.T) {
-	type args struct {
-		fromPath string
-		toPath   string
-		offset   int64
-		limit    int64
 	}
 
 }
