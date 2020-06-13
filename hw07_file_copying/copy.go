@@ -3,11 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/cheggaaa/pb/v3"
 	"io"
 	"io/ioutil"
 	"os"
 	"time"
+
+	"github.com/cheggaaa/pb/v3"
 )
 
 var (
@@ -142,7 +143,6 @@ func copying(sourceFile *os.File, args copyArgs) error {
 }
 
 func validateArgs(args copyArgs) error {
-
 	validators := []validator{
 		func() error { return isNotEmptyPath(args.fromPath) },
 		func() error { return isNotEmptyPath(args.toPath) },
