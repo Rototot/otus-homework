@@ -43,13 +43,14 @@ func Copy(fromPath string, toPath string, offset, limit int64) error {
 
 	// open
 	var sourceFile *os.File
-	sourceFile, err := os.Open(fromPath)
-	if err != nil {
-		return err
-	}
 	defer sourceFile.Close()
 
 	var operations = []fileOperation{
+		func(s *os.File, args copyArgs) error {
+			file, err := os.Open(fromPath)
+			sourceFile = file
+			return err
+		},
 		seek,
 		copying,
 	}
@@ -60,7 +61,7 @@ func Copy(fromPath string, toPath string, offset, limit int64) error {
 		}
 	}
 
-	return err
+	return nil
 }
 
 func seek(sourceFile *os.File, args copyArgs) error {
@@ -74,7 +75,7 @@ func seek(sourceFile *os.File, args copyArgs) error {
 			return ErrOffsetExceedsFileSize
 		}
 		// seek if need
-		if _, err := sourceFile.Seek(offset, io.SeekStart); err != nil {
+		if _, err := sourceFile.Seek(args.offset, io.SeekStart); err != nil {
 			return err
 		}
 	}
