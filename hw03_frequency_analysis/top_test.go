@@ -57,4 +57,52 @@ func TestTop10(t *testing.T) {
 			assert.ElementsMatch(t, expected, Top10(text))
 		}
 	})
+
+	t.Run("when short text", func(t *testing.T) {
+		if taskWithAsteriskIsCompleted {
+			text := "ab cd Cd cD CD 1"
+			expected := []string{"cd", "ab", "1"}
+			assert.Subset(t, expected, Top10(text))
+		} else {
+			text := "ab cd cd 1"
+			expected := []string{"cd", "ab", "1"}
+			assert.ElementsMatch(t, expected, Top10(text))
+		}
+	})
+
+	t.Run("when only special chars in text", func(t *testing.T) {
+		if taskWithAsteriskIsCompleted {
+			text := "\n \t \n \r"
+			var expected []string
+			assert.Subset(t, expected, Top10(text))
+		} else {
+			text := "\n \t \n \r"
+			var expected []string
+			assert.ElementsMatch(t, expected, Top10(text))
+		}
+	})
+
+	t.Run("when escape special chars in text", func(t *testing.T) {
+		if taskWithAsteriskIsCompleted {
+			text := `\n \s \t \r`
+			expected := []string{"\\n", "\\s", "\\t", "\\r"}
+			assert.Subset(t, expected, Top10(text))
+		} else {
+			text := `\n \s \t \r`
+			expected := []string{"\\n", "\\s", "\\t", "\\r"}
+			assert.ElementsMatch(t, expected, Top10(text))
+		}
+	})
+
+	t.Run("when dash in text", func(t *testing.T) {
+		if taskWithAsteriskIsCompleted {
+			text := `abc - bcd-Abc bcd-aBc`
+			expected := []string{"bcd-abc", "abc", "-"}
+			assert.Subset(t, expected, Top10(text))
+		} else {
+			text := `abc - bcd-abc bcd-abc`
+			expected := []string{"bcd-abc", "abc", "-"}
+			assert.ElementsMatch(t, expected, Top10(text))
+		}
+	})
 }
