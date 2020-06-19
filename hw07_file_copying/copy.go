@@ -59,8 +59,8 @@ func Copy(fromPath string, toPath string, offset, limit int64) error {
 		copying,
 	}
 
-	for _, action := range operations {
-		if err := action(sourceFile, *args); err != nil {
+	for _, operation := range operations {
+		if err := operation(sourceFile, *args); err != nil {
 			return err
 		}
 	}
