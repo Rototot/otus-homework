@@ -2,14 +2,120 @@ package hw05_parallel_execution //nolint:golint,stylecheck
 
 import (
 	"errors"
+	"sync"
 )
 
 var ErrErrorsLimitExceeded = errors.New("errors limit exceeded")
+var ErrInvalidArgument = errors.New("invalid argument")
 
 type Task func() error
 
-// Run starts tasks in N goroutines and stops its work when receiving M errors from tasks
-func Run(tasks []Task, N int, M int) error {
-	// Place your code here
+func Run(tasks []Task, poolSize int, maxErrors int) error {
+	if poolSize < 0 || maxErrors < 0 {
+		return ErrInvalidArgument
+	}
+
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	var queue = make(chan Task, len(tasks))
+	// push to queue
+	for _, task := range tasks {
+		queue <- task
+	}
+
+	// run pool workers
+	var pool = NewWorkerPool(queue, poolSize, maxErrors, poolSize+maxErrors)
+	err := pool.Listen()
+
+	close(queue)
+
+	return err
+}
+
+type WorkersPool struct {
+	queue           chan Task
+	size            int
+	maxErrors       int
+	maxAttempts     int
+	maxNoErrorTasks int
+	qtyErrors       int
+	qtyAttempts     int
+	qtyNoErrorTasks int
+	su              sync.Mutex
+}
+
+func NewWorkerPool(queue chan Task, poolSize int, maxErrors int, maxAttempts int) *WorkersPool {
+	return &WorkersPool{
+		queue:           queue,
+		size:            poolSize,
+		maxErrors:       maxErrors,
+		maxAttempts:     maxAttempts,
+		maxNoErrorTasks: cap(queue),
+	}
+}
+
+func (p *WorkersPool) Listen() error {
+	// await complete workers
+	p.startWorkers()
+
+	if p.qtyErrors > p.maxErrors {
+		return ErrErrorsLimitExceeded
+	}
+
 	return nil
+}
+
+func (p *WorkersPool) startWorkers() {
+	var wg sync.WaitGroup
+	for i := 0; i < p.size; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			p.worker()
+		}()
+	}
+
+	wg.Wait()
+}
+
+func (p *WorkersPool) worker() {
+	var isNeedStop = func() bool {
+		p.su.Lock()
+		defer p.su.Unlock()
+
+		// errors > M
+		// with erros -> >= N+M
+		// complete = N
+		return p.qtyErrors > p.maxErrors ||
+			(p.qtyErrors > 0 && p.qtyAttempts >= p.maxAttempts) ||
+			p.qtyNoErrorTasks >= p.maxNoErrorTasks
+	}
+	for {
+		select {
+		case task, ok := <-p.queue:
+			if !ok || isNeedStop() {
+				return
+			}
+			p.handleTask(task)
+		default:
+			if isNeedStop() {
+				return
+			}
+		}
+	}
+}
+
+func (p *WorkersPool) handleTask(task Task) {
+	err := task()
+	p.su.Lock()
+	defer p.su.Unlock()
+
+	p.qtyAttempts++
+	if err == nil {
+		p.qtyNoErrorTasks++
+	} else {
+		p.qtyErrors++
+	}
 }
