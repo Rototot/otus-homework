@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	ErrEmptyPath             = errors.New("empty file path")
+	ErrUnsupportedFile       = errors.New("unsupported file")
 	ErrOffsetExceedsFileSize = errors.New("offset exceeds file size")
+	ErrEmptyPath             = errors.New("empty file path")
 	ErrInvalidArgument       = os.ErrInvalid
 )
 
@@ -46,11 +47,14 @@ func Copy(fromPath string, toPath string, offset, limit int64) error {
 	defer sourceFile.Close()
 
 	var operations = []fileOperation{
+		// open file
 		func(s *os.File, args copyArgs) error {
 			file, err := os.Open(fromPath)
 			sourceFile = file
+
 			return err
 		},
+		validateFile,
 		seek,
 		copying,
 	}
@@ -59,6 +63,19 @@ func Copy(fromPath string, toPath string, offset, limit int64) error {
 		if err := action(sourceFile, *args); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func validateFile(sourceFile *os.File, args copyArgs) error {
+	fileInfo, err := sourceFile.Stat()
+	if err != nil {
+		return err
+	}
+
+	if fileInfo.Size() == 0 {
+		return ErrUnsupportedFile
 	}
 
 	return nil

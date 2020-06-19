@@ -71,17 +71,6 @@ func TestCopy(t *testing.T) {
 			wantErr:    nil,
 			expectFile: "testdata/out_offset6000_limit1000.txt",
 		},
-		{
-			name: "when copy empty file",
-			args: copyArgs{
-				fromPath: "testdata/input_empty.txt",
-				toPath:   "out_empty.txt",
-				offset:   0,
-				limit:    1000,
-			},
-			wantErr:    nil,
-			expectFile: "testdata/out_empty.txt",
-		},
 	}
 
 	// cases
@@ -174,13 +163,31 @@ func TestCopy(t *testing.T) {
 			},
 			wantErr: errors.New("testdata is not a file"),
 		},
+		{
+			name: "file with unknown length",
+			args: copyArgs{
+				fromPath: "/dev/urandom",
+				toPath:   "out.txt",
+				offset:   0,
+				limit:    0,
+			},
+			wantErr: ErrUnsupportedFile,
+		},
+		{
+			name: "when copy empty file",
+			args: copyArgs{
+				fromPath: "testdata/input_empty.txt",
+				toPath:   "out.txt",
+				offset:   0,
+				limit:    0,
+			},
+			wantErr: ErrUnsupportedFile,
+		},
 	}
 	for _, tt := range validateCases {
 		t.Run("validate: " + tt.name, func(t *testing.T) {
 			err := Copy(tt.args.fromPath, tt.args.toPath, tt.args.offset, tt.args.limit)
-			assert.Error(t, err)
-			assert.EqualError(t, err, tt.wantErr.Error())
+			assert.EqualError(t, err, tt.wantErr.Error(),)
 		})
 	}
-
 }

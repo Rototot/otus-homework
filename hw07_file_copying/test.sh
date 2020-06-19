@@ -6,8 +6,8 @@ go build -o go-cp
 ./go-cp -from testdata/input.txt -to out.txt
 cmp out.txt testdata/out_offset0_limit0.txt
 
-./go-cp -from testdata/input.txt -to out10.txt -limit 10
-cmp out10.txt testdata/out_offset0_limit10.txt
+./go-cp -from testdata/input.txt -to out.txt -limit 10
+cmp out.txt testdata/out_offset0_limit10.txt
 
 ./go-cp -from testdata/input.txt -to out.txt -limit 1000
 cmp out.txt testdata/out_offset0_limit1000.txt
