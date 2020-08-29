@@ -1,0 +1,97 @@
+{{- /* int min validator */ -}}
+{{- define "int_min_validator"}}func() (*ValidationError, error) {
+    if {{.Field.FullName}} < {{.Args}} {
+        return fmt.Errorf("%d less than %d", {{.Field.FullName}}, {{.Args}}), nil
+    }
+
+    return nil, nil
+}{{- end}}
+{{- define "array_int_min_validator"}}func() (*ValidationError, error) {
+    for _, item := range {{.Field.FullName}}} {
+        if item < {{.Args}} {
+            return fmt.Errorf("%d less than %d", item, {{.Args}})
+        }
+    }
+
+    return fmt.Errorf("%s is invalid and not in set", {{.Field.FullName}})
+}{{- end}}
+{{- /* int max validator*/ -}}
+{{- define "int_max_validator"}}func () (*ValidationError, error) {
+    if {{.Field.FullName}} > {{.Args}} {
+        return fmt.Errorf("%d more than %d", {{.Field.FullName}}, {{.Args}})
+    }
+
+    return nil
+}{{- end}}
+{{- define "array_int_max_validator"}}func() (*ValidationError, error) {
+    for _, item := range {{.Field.FullName}}} {
+        if item < {{.Args}} {
+            return fmt.Errorf("%d less than %d", item, {{.Args}})
+        }
+    }
+
+    return fmt.Errorf("%s is invalid and not in set", {{.Field.Name}})
+}{{- end}}
+{{- /* string len validator */ -}}
+{{- define "string_len_validator"}}
+    func () (*ValidationError, error) {
+        if len({{.Field.FullName}}) > {{.Args}} {
+            return fmt.Errorf("length of the %s more than %d", {{.Field.FullName}}, {{.Args}})
+        }
+
+        return nil
+    }
+{{- end}}
+{{- define "array_string_len_validator"}}func () (*ValidationError, error) {
+        if len({{.Field.FullName}}) > {{.Args}} {
+            return fmt.Errorf("length of the %s more than %d", {{.Field.FullName}}, {{.Args}})
+        }
+
+    return nil
+}{{- end}}
+{{- /* regexp  validator */ -}}
+{{- define "regexp_validator"}}func() (*ValidationError, error) {
+        matched, err := regexp.MatchString({{.Args}}, {{.Field.FullName}})
+
+        if err != nil {
+            return nil, err
+        }
+
+        if matched {
+            return nil , nil
+        }
+
+    return fmt.Errorf("invalid values %s", {{.Field.Name}}), nil
+}{{- end}}
+{{- define "[]string_regexp_validator"}}func() (*ValidationError, error) {
+         pattern, err := regexp.Compile({{.Args}})
+
+        for item := range {{.Field.FullName}}{
+            if !pattern.MatchString(item){
+                return fmt.Errorf("invalid values %s", {{.Field.FullName}}), nil
+            }
+        }
+
+        return nil , nil
+    }{{- end}}
+{{- /*  IN validator */ -}}
+{{- define "in_validator"}}
+    func() (*ValidationError, error) {
+        for _, item := range {{.Field.FullName}} {
+            if item == {{.Args}} {
+                return nil
+            }
+        }
+
+        return fmt.Errorf("%d is invalid and not in set", {{.Field.FullName}})
+    }
+{{- end}}
+{{- define "array_in_validator"}}func() (*ValidationError, error) {
+    for _, item := range {{.Field.FullName}} {
+        if item == {{.Field.Name}} {
+            return nil
+        }
+    }
+
+return fmt.Errorf("%d is invalid and not in set", {{.Field.FullName}})
+}{{- end}}

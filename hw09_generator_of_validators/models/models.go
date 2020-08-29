@@ -19,6 +19,9 @@ type (
 	}
 )
 
+func (us *User)  Test() {
+
+}
 type Token struct {
 	Header    []byte
 	Payload   []byte
