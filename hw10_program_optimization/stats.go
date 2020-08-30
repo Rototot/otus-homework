@@ -3,9 +3,10 @@ package hw10_program_optimization //nolint:golint,stylecheck
 import (
 	"bufio"
 	"fmt"
-	jsoniter "github.com/json-iterator/go"
 	"io"
 	"strings"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -21,6 +22,7 @@ func GetDomainStat(r io.Reader, domain string) (DomainStat, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get users error: %s", err)
 	}
+
 	return countDomains(u, domain)
 }
 
