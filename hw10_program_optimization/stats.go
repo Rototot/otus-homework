@@ -28,8 +28,7 @@ func GetDomainStat(r io.Reader, domain string) (DomainStat, error) {
 
 type users []User
 
-func getUsers(r io.Reader) (users, error) {
-	var result users
+func getUsers(r io.Reader) (result users, err error) {
 	content := bufio.NewReader(r)
 	for {
 		line, _, err := content.ReadLine()
@@ -40,13 +39,13 @@ func getUsers(r io.Reader) (users, error) {
 		}
 		var user User
 		if err := json.Unmarshal(line, &user); err != nil {
-			return nil, err
+			return result, err
 		}
 
 		result = append(result, user)
 	}
 
-	return result, nil
+	return
 }
 
 func countDomains(u users, domain string) (DomainStat, error) {
